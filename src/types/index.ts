@@ -1,0 +1,103 @@
+// ─── Player ──────────────────────────────────────────────────────────────────
+
+export type ProgressLevel = 0 | 1 | 2 | 3;
+
+export interface Player {
+  playerId: string;
+  wallet: string;
+  metadataUri: string; // IPFS CID pointing to off-chain profile JSON
+  position: string;
+  region: string;
+  progressLevel: ProgressLevel;
+  createdAt: number; // ledger timestamp
+}
+
+export interface PlayerMetadata {
+  name: string;
+  age: number;
+  position: string;
+  region: string;
+  club?: string;
+  highlightReels: string[]; // IPFS CIDs
+  stats?: Record<string, string | number>;
+}
+
+// ─── Milestone ────────────────────────────────────────────────────────────────
+
+export type MilestoneType = 'identity' | 'performance' | 'trial_offer';
+
+export interface Milestone {
+  milestoneId: string;
+  playerId: string;
+  milestoneType: MilestoneType;
+  evidenceUri: string; // IPFS CID
+  validator: string;   // Stellar address
+  approved: boolean;
+  createdAt: number;
+}
+
+// ─── Scout ────────────────────────────────────────────────────────────────────
+
+export interface Scout {
+  wallet: string;
+  subscriptionExpiry?: number; // ledger timestamp; undefined = no active sub
+}
+
+export interface ContactUnlock {
+  scout: string;
+  playerId: string;
+  unlockedAt: number;
+}
+
+// ─── API shapes ───────────────────────────────────────────────────────────────
+
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+export interface PaginatedResponse<T> extends ApiResponse<T[]> {
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface FilterPlayersQuery {
+  region?: string;
+  position?: string;
+  minTier?: ProgressLevel;
+  page?: number;
+  pageSize?: number;
+}
+
+// ─── SEP-10 ───────────────────────────────────────────────────────────────────
+
+export interface Sep10Challenge {
+  transaction: string; // XDR
+  networkPassphrase: string;
+}
+
+export interface Sep10Token {
+  token: string;
+  account: string;
+  expiresAt: number;
+}
+
+// ─── Contract events (indexed) ────────────────────────────────────────────────
+
+export type ContractEventType =
+  | 'player_registered'
+  | 'milestone_submitted'
+  | 'milestone_approved'
+  | 'scout_subscribed'
+  | 'contact_unlocked'
+  | 'trial_offer_logged'
+  | 'fees_withdrawn';
+
+export interface ContractEvent {
+  type: ContractEventType;
+  ledger: number;
+  txHash: string;
+  payload: Record<string, unknown>;
+}
