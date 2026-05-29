@@ -47,7 +47,10 @@ export async function getPlayer(req: Request, res: Response, next: NextFunction)
       res.status(404).json({ success: false, error: 'Player not found' });
       return;
     }
-    res.json({ success: true, data: events[0].payload });
+    const payload = events[0].payload;
+    const level = (Number(payload.progress_level ?? 0) as ProgressLevel);
+    const { tierName, tierDescription } = getTierMeta(level);
+    res.json({ success: true, data: { ...payload, tierName, tierDescription } });
   } catch (err) {
     next(err);
   }
