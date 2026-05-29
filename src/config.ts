@@ -25,6 +25,9 @@ const config = {
   },
   platformFeeBps: parseInt(process.env.PLATFORM_FEE_BPS ?? '500', 10),
   dbPath: process.env.DB_PATH ?? 'scout-off.db',
+  // Seed admin: wallet address that is automatically granted the admin role on token issuance.
+  // Leave unset in production until a proper admin management system is in place.
+  adminWallet: process.env.ADMIN_WALLET ?? '',
 };
 
 export default config;

@@ -24,20 +24,21 @@ app.use('/api/admin', adminRoutes);
 
 app.use(errorHandler);
 
-app.listen(config.port, () => {
-  console.log(`ScoutOff backend running on port ${config.port} [${config.network}]`);
+if (require.main === module) {
+  app.listen(config.port, () => {
+    console.log(`ScoutOff backend running on port ${config.port} [${config.network}]`);
 
-  // Poll for new contract events every 5 seconds
-  const poll = async () => {
-    try {
-      await indexEvents();
-    } catch (err) {
-      console.error('Indexer error:', (err as Error).message);
-    }
-  };
+    const poll = async () => {
+      try {
+        await indexEvents();
+      } catch (err) {
+        console.error('Indexer error:', (err as Error).message);
+      }
+    };
 
-  poll();
-  setInterval(poll, 5_000);
-});
+    poll();
+    setInterval(poll, 5_000);
+  });
+}
 
 export default app;
