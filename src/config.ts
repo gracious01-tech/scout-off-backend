@@ -1,30 +1,24 @@
 import dotenv from 'dotenv';
+import { z } from 'zod';
 dotenv.config();
 
-function required(key: string): string {
-  const value = process.env[key];
-  if (!value) throw new Error(`Missing required env var: ${key}`);
-  return value;
-}
+const ConfigSchema = z.object({
+  port: z.coerce.number().default(4000),
+  network: z.enum(['testnet', 'mainnet']).default('testnet'),
+  networkPassphrase: z.string().default('Test SDF Network ; September 2015'),
+  horizonUrl: z.string().url().default('https://horizon-testnet.stellar.org'),
+  sorobanRpcUrl: z.string().url().default('https://soroban-testnet.stellar.org'),
+  contractId: z.string().min(1),
+  jwtSecret: z.string().min(1),
+  pinata: z.object({
+    apiKey: z.string().default(''),
+    secret: z.string().default(''),
+    gateway: z.string().url().default('https://gateway.pinata.cloud'),
+  }),
+  platformFeeBps: z.coerce.number().default(500),
+  dbPath: z.string().default('scout-off.db'),
+});
 
-const config = {
-  port: parseInt(process.env.PORT ?? '4000', 10),
-  network: (process.env.NETWORK ?? 'testnet') as 'testnet' | 'mainnet',
-  networkPassphrase:
-    process.env.NETWORK_PASSPHRASE ?? 'Test SDF Network ; September 2015',
-  horizonUrl:
-    process.env.HORIZON_URL ?? 'https://horizon-testnet.stellar.org',
-  sorobanRpcUrl:
-    process.env.SOROBAN_RPC_URL ?? 'https://soroban-testnet.stellar.org',
-  contractId: required('CONTRACT_ID'),
-  jwtSecret: required('JWT_SECRET'),
-  pinata: {
-    apiKey: process.env.PINATA_API_KEY ?? '',
-    secret: process.env.PINATA_SECRET ?? '',
-    gateway: process.env.PINATA_GATEWAY ?? 'https://gateway.pinata.cloud',
-  },
-  platformFeeBps: parseInt(process.env.PLATFORM_FEE_BPS ?? '500', 10),
-  dbPath: process.env.DB_PATH ?? 'scout-off.db',
-};
+const config = ConfigSchema.parse(process.env);
 
 export default config;
