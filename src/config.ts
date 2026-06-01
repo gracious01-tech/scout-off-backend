@@ -63,6 +63,10 @@ const config = {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '60000', 10),
     max: parseInt(process.env.RATE_LIMIT_MAX ?? '60', 10),
   },
+  bodyLimit: {
+    // Maximum JSON payload size (default: 1MB)
+    json: process.env.JSON_PAYLOAD_LIMIT ?? '1mb',
+  },
 };
 
 export default config;

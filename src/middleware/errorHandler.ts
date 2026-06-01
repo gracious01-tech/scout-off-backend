@@ -16,6 +16,13 @@ export function errorHandler(
     return;
   }
 
+  // Handle payload too large errors (HTTP 413)
+  if (err.message.includes('payload too large') || err.message.includes('entity.too.large')) {
+    const body: ApiResponse = { success: false, error: 'Payload too large' };
+    res.status(413).json(body);
+    return;
+  }
+
   const body: ApiResponse = { success: false, error: err.message };
   res.status(500).json(body);
 }

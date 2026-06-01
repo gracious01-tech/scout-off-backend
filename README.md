@@ -448,6 +448,7 @@ Both dependency checks are stubbed in tests — see `tests/routes/health.test.ts
 | `DB_PATH`                 | SQLite database file path (default: `scout-off.db`) |
 | `LOG_LEVEL`               | Log verbosity: `debug`, `info`, `warn`, `error` (default: `info`) |
 | `STELLAR_HEALTH_CHECK_ENABLED` | Include Stellar RPC in `/health` response (default: `true`; set `false` to disable in staging) |
+| `JSON_PAYLOAD_LIMIT`      | Maximum JSON request body size (default: `1mb`); requests exceeding limit return HTTP 413 |
 
 ## Testing
 
