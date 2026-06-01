@@ -16,7 +16,11 @@ import { requireOwner } from '../middleware/requireOwner';
 const router = Router();
 
 router.get('/', validateQuery(filterSchema), filterPlayers);
-router.post('/register', validateBody(registerSchema), registerPlayer);
+router.post(
+  '/register',
+  validateBody(registerSchema, { context: 'player_registration' }),
+  registerPlayer
+);
 router.get('/:playerId', getPlayer);
 router.get('/:playerId/milestones', getPlayerMilestones);
 // Profile owner only — requireAuth sets req.account; requireOwner checks it matches :playerId
