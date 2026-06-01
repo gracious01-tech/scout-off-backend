@@ -1,10 +1,10 @@
 import { sanitizeInput } from '../utils/sanitizer';
-import { sanitizeInput } from '../utils/sanitizer';
 import { z } from 'zod';
 import { pinJson, gatewayUrl } from '../services/ipfs';
 import { getEvents } from '../services/indexer';
 import { invalidatePlayerCache } from '../services/cache';
 import { ApiResponse } from '../types';
+import { recordAudit } from '../utils/audit';
 
 export const registerSchema = z.object({
   wallet: z.string().min(56).max(56),
@@ -28,6 +28,7 @@ export async function registerPlayer(req: Request, res: Response, next: NextFunc
     const sanitizedPosition = sanitizeInput(position);
     const sanitizedRegion = sanitizeInput(region);
     const cid = await pinJson({ wallet, position: sanitizedPosition, region: sanitizedRegion, ...metadata });
+    recordAudit(wallet, 'player_registered', { wallet, position: sanitizedPosition, region: sanitizedRegion, cid });
     // Invalidate player search cache so new profile appears in results
     invalidatePlayerCache();
     const body: ApiResponse<{ metadataUri: string; gatewayUrl: string }> = {
