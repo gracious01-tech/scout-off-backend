@@ -1,5 +1,5 @@
 import { sanitizeInput } from '../utils/sanitizer';
-import { sanitizeInput } from '../utils/sanitizer';
+import { normalizePosition } from '../utils/positionAliases';
 import { z } from 'zod';
 import { pinJson, gatewayUrl } from '../services/ipfs';
 import { getEvents } from '../services/indexer';
@@ -66,9 +66,17 @@ export async function filterPlayers(req: Request, res: Response, next: NextFunct
     const { region, position, minTier, page, pageSize } = filterSchema.parse(req.query);
     const sanitizedRegion = region ? sanitizeInput(region) : undefined;
     const sanitizedPosition = position ? sanitizeInput(position) : undefined;
+    // Normalize position synonyms/aliases (e.g. "fw" -> "forward") if available.
+    // If normalization yields undefined (unknown synonym), fallback to sanitizedPosition
+    // to preserve stable API behavior.
+    const normalizedPosition = sanitizedPosition ? normalizePosition(sanitizedPosition) : undefined;
+
     let players = getEvents('player_registered').map((e) => e.payload);
     if (sanitizedRegion) players = players.filter((p) => p.region === sanitizedRegion);
-    if (sanitizedPosition) players = players.filter((p) => p.position === sanitizedPosition);
+    if (normalizedPosition || sanitizedPosition) {
+      const match = normalizedPosition ?? sanitizedPosition;
+      players = players.filter((p) => p.position === match);
+    }
     if (minTier !== undefined)
       players = players.filter((p) => Number(p.progress_level) >= minTier);
     const paginated = players.slice((page - 1) * pageSize, page * pageSize);
