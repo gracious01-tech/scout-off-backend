@@ -324,6 +324,84 @@ On startup the server will:
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment instructions.
 
+## Backend Local Development
+
+This section covers everything you need to get the backend running locally.
+
+### Prerequisites
+
+- Node.js ≥ 18
+- npm ≥ 9
+
+### Install Dependencies
+
+```bash
+npm install
+```
+
+### Environment Setup
+
+Copy the example env file and fill in the required values:
+
+```bash
+cp .env.example .env
+```
+
+Required environment variables (the server will fail to start without these):
+
+| Variable | Description |
+|----------|-------------|
+| `CONTRACT_ID` | Deployed ScoutOff Soroban contract address |
+| `JWT_SECRET` | Secret used to sign SEP-10 JWT tokens |
+
+Optional but commonly set:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `4000` | Backend API port |
+| `HORIZON_URL` | Stellar testnet | Stellar Horizon endpoint |
+| `SOROBAN_RPC_URL` | Stellar testnet | Soroban RPC endpoint |
+| `PINATA_API_KEY` / `PINATA_SECRET` | — | IPFS upload credentials |
+| `DB_PATH` | `scout-off.db` | SQLite database file path |
+| `LOG_LEVEL` | `info` | Log verbosity: `debug`, `info`, `warn`, `error` |
+
+See [.env.example](.env.example) for the full list of supported variables.
+
+### Run (Development)
+
+```bash
+npm run dev
+```
+
+Hot-reload is enabled via `ts-node-dev`. The server restarts automatically on file changes.
+
+### Build
+
+```bash
+npm run build
+```
+
+Compiles TypeScript to `dist/`. Run the compiled output with `npm start`.
+
+### Run Tests
+
+```bash
+npm test
+```
+
+Runs the full backend test suite with Jest. Tests are located in the [`tests/`](tests/) directory, organised by layer:
+
+- [`tests/middleware/`](tests/middleware/) — middleware unit tests (auth, correlationId, errorHandler, etc.)
+- [`tests/routes/`](tests/routes/) — route integration tests (health, scout, admin, etc.)
+- [`tests/utils/`](tests/utils/) — utility unit tests (CID validator, tier, logger, etc.)
+- [`tests/services/`](tests/services/) — service unit tests (IPFS, indexer, SEP-10, etc.)
+
+### Lint
+
+```bash
+npm run lint
+```
+
 ## Health Endpoints
 
 The backend exposes two health check endpoints for monitoring and orchestration probes.
@@ -401,6 +479,18 @@ Currently checks: **IPFS (Pinata)** storage connectivity.
 | `/ready` | IPFS / Pinata (`PINATA_API_KEY`) | `src/services/ipfs.ts` — `checkHealth()` |
 
 Both dependency checks are stubbed in tests — see `tests/routes/health.test.ts`.
+
+### IPFS Service Dependency
+
+The backend uses [Pinata](https://pinata.cloud) to pin player metadata and milestone evidence to IPFS. The service is **optional in local development** — when `PINATA_API_KEY` and `PINATA_SECRET` are not set, `pinJson`, `pinFile`, and `checkHealth` fall back to deterministic stub behaviour and log a `[warn]` on each call. No network requests are made.
+
+In **production** (`NODE_ENV=production`) the same functions throw immediately if the credentials are absent, preventing silent data loss.
+
+| Env var | Required | Description |
+|---------|----------|-------------|
+| `PINATA_API_KEY` | production only | Pinata API key |
+| `PINATA_SECRET` | production only | Pinata secret key |
+| `PINATA_GATEWAY` | no | Public gateway base URL (default: `https://gateway.pinata.cloud`) |
 
 ## How It Works
 

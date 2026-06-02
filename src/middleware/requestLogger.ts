@@ -41,9 +41,9 @@ function computeRequestBodySize(req: Request): number | undefined {
  */
 export function requestLogger(req: Request, res: Response, next: NextFunction): void {
   const ip = extractClientIp(req);
-  const bodySize = computeRequestBodySize(req);
-  const sizeInfo = bodySize !== undefined ? ` size=${bodySize}b` : '';
-
-  logger.info(`[request] ${req.method} ${req.path} ip=${ip}${sizeInfo}`);
+  const correlationId: string | undefined = (req as any).correlationId;
+  logger.info(
+    `[request] ${req.method} ${req.path} ip=${ip}${correlationId ? ` correlationId=${correlationId}` : ''}`
+  );
   next();
 }
