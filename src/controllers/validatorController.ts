@@ -6,9 +6,13 @@ import { invalidateMilestoneCache } from '../services/cache';
 import { PlayerMilestone } from '../types';
 
 export const milestoneSchema = z.object({
-  playerId: z.string().min(1),
-  milestoneType: z.enum(['identity', 'performance', 'trial_offer']),
-  evidenceUri: z.string().min(1),
+  playerId: z.string().min(1, 'playerId is required'),
+  milestoneType: z.enum(['identity', 'performance', 'trial_offer'], {
+    errorMap: () => ({ message: 'milestoneType must be identity, performance, or trial_offer' }),
+  }),
+  evidenceUri: z.string().min(1, 'evidenceUri is required'),
+  notes: z.string().optional(),
+  validatorComment: z.string().optional(), // placeholder for validator comments
 });
 
 export const pendingQuerySchema = z.object({
