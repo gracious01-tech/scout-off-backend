@@ -38,6 +38,8 @@ export async function submitMilestoneEvidence(req: Request, res: Response, next:
       `[validator] action=submit_milestone validator=${validatorWallet} playerId=${playerId} milestoneType=${milestoneType} evidenceCid=${evidenceCid} correlationId=${correlationId}`
     );
 
+    recordAudit(validatorWallet, 'milestone_submitted', { playerId, milestoneType, evidenceCid }, `correlationId=${correlationId}`);
+
     res.status(201).json({ success: true, data: { evidenceCid } });
   } catch (err) {
     next(err);
@@ -61,6 +63,10 @@ export async function getPendingMilestones(req: Request, res: Response, next: Ne
       submittedAt: m.created_at as number || Math.floor(Date.now() / 1000),
       evidenceUri: m.evidence_uri as string || m.evidenceUri as string || '',
     }));
+
+    const validatorWallet = (req as any).account ?? 'unknown';
+    recordAudit(validatorWallet, 'milestone_approved', { region: region ?? null, playerId: playerId ?? null, pendingCount: milestones.length }, 'pending milestones viewed');
+
     res.json({ success: true, data: milestones });
   } catch (err) {
     next(err);
