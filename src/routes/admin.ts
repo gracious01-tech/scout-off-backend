@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getStats, getAllEvents, getFeeSummary, registerValidator, revokeValidator } from '../controllers/adminController';
+import { getStats, getAllEvents, getFeeSummary, registerValidator, revokeValidator, introspectToken } from '../controllers/adminController';
 import { requireAuth, requireRole } from '../middleware/auth';
 
 const router = Router();
@@ -22,7 +22,7 @@ router.get('/stats', requireRole('admin'), getStats);
  * @response 200 { success: true, data: AdminEvent[] }
  * @auth Bearer (any authenticated user)
  */
-router.get('/events', requireAuth, getAllEvents);
+router.get('/events', requireRole('admin'), getAllEvents);
 
 /**
  * GET /api/admin/fees
@@ -30,9 +30,9 @@ router.get('/events', requireAuth, getAllEvents);
  * Returns a list of fee withdrawal events from the contract.
  *
  * @response 200 { success: true, data: FeeHistoryItem[] }
- * @auth Bearer (any authenticated user)
+ * @auth Bearer (admin role required)
  */
-router.get('/fees', requireAuth, getFeeSummary);
+router.get('/fees', requireRole('admin'), getFeeSummary);
 
 /**
  * POST /api/admin/validators/register

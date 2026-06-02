@@ -2,6 +2,14 @@ import dotenv from 'dotenv';
 import { z } from 'zod';
 dotenv.config();
 
+function required(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
 const ConfigSchema = z.object({
   port: z.coerce.number().default(4000),
   network: z.enum(['testnet', 'mainnet']).default('testnet'),
@@ -46,15 +54,14 @@ const config = {
     xFrameOptions: process.env.SECURITY_X_FRAME_OPTIONS ?? 'DENY',
     referrerPolicy: process.env.SECURITY_REFERRER_POLICY ?? 'no-referrer',
   },
-  logLevel: (process.env.LOG_LEVEL ?? 'info') as 'debug' | 'info' | 'warn' | 'error',
   webhook: {
     enabled: process.env.WEBHOOK_ENABLED === 'true',
     url: process.env.WEBHOOK_URL ?? ''
   },
   rateLimit: {
-    enabled: process.env.RATE_LIMIT_ENABLED === 'true',
+    enabled: process.env.RATE_LIMIT_ENABLED !== 'false',
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '60000', 10),
-    max: parseInt(process.env.RATE_LIMIT_MAX ?? '60', 10),
+    max: parseInt(process.env.RATE_LIMIT_MAX ?? (process.env.NODE_ENV === 'test' ? '1000' : '60'), 10),
   },
 };
 
