@@ -87,6 +87,11 @@ for (const prefix of prefixes) {
   app.use(`${prefix}/admin`, adminRoutes);
 }
 
+// Catch-all 404 handler for unmatched routes
+app.use((_req, res) => {
+  res.status(404).json({ error: 'Not Found' });
+});
+
 app.use(errorHandler);
 
 app.listen(config.port, () => {
