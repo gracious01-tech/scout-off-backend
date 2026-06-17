@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getStats, getAllEvents, getFeeSummary, registerValidator, revokeValidator, pauseContract, unpauseContract, adminDateRangeSchema } from '../controllers/adminController';
+import { getStats, getAllEvents, getFeeSummary, registerValidator, revokeValidator, pauseContract, unpauseContract, adminDateRangeSchema, withdrawFeesController } from '../controllers/adminController';
 import { introspectToken } from '../controllers/adminController';
 import { exportEvents } from '../controllers/exportController';
 import { requireAuth, requireRole } from '../middleware/auth';
@@ -52,6 +52,21 @@ router.get('/events/export', requireRole('admin'), exportEvents);
  * @auth Bearer (admin role required)
  */
 router.get('/fees', requireRole('admin'), getFeeSummary);
+
+/**
+ * POST /api/admin/fees
+ *
+ * Withdraws accumulated platform fees from the Soroban contract to a specified recipient.
+ *
+ * @body recipient {string} - Stellar public key of the withdrawal recipient
+ * @response 200 { success: true, data: { transactionId, recipient, amount, token } }
+ * @response 400 { success: false, error: string } - Invalid recipient address
+ * @response 401 { success: false, error: string } - Missing token
+ * @response 403 { success: false, error: string } - Non-admin role
+ * @response 409 { success: false, error: string } - No fees available
+ * @auth Bearer (admin role required)
+ */
+router.post('/fees', requireRole('admin'), withdrawFeesController);
 
 /**
  * POST /api/admin/validators/register

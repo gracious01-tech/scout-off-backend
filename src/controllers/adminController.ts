@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { getEvents } from '../services/indexer';
 import { AdminEvent, FeeHistoryItem, ApiResponse, EventRecord } from '../types';
 import { logAuditEvent } from '../services/audit';
+import { withdrawFees as stellarWithdrawFees, FeeWithdrawalError, FeeWithdrawalResult } from '../services/stellar';
 import config from '../config';
 
 const STELLAR_ADDRESS_RE = /^G[A-Z2-7]{55}$/;
@@ -195,6 +196,69 @@ export async function introspectToken(req: Request, res: Response, next: NextFun
       },
     });
   } catch (err) {
+    next(err);
+  }
+}
+
+const STELLAR_ADDRESS_RE_PUBLIC = /^G[A-Z2-7]{55}$/;
+
+export const withdrawFeesSchema = z.object({
+  recipient: z
+    .string()
+    .regex(STELLAR_ADDRESS_RE_PUBLIC, 'recipient must be a valid Stellar public key'),
+});
+
+/** POST /api/admin/fees — withdraw accumulated platform fees */
+export async function withdrawFeesController(req: Request, res: Response, next: NextFunction) {
+  const adminWallet = (req as any).account as string ?? 'unknown';
+  const parsed = withdrawFeesSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    logAuditEvent({
+      action: 'fee_withdrawal_attempt',
+      adminWallet,
+      queryParams: { error: 'validation_failed', reason: parsed.error.errors[0]?.message },
+      timestamp: new Date().toISOString(),
+    });
+    res.status(400).json({ success: false, error: parsed.error.errors[0]?.message ?? 'Invalid request body' });
+    return;
+  }
+
+  const { recipient } = parsed.data;
+
+  try {
+    const result: FeeWithdrawalResult = await stellarWithdrawFees(recipient);
+
+    logAuditEvent({
+      action: 'fee_withdrawal_attempt',
+      adminWallet,
+      queryParams: { recipient, transactionId: result.transactionId, amount: result.amount },
+      timestamp: new Date().toISOString(),
+      contractAction: 'withdraw_fees',
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        transactionId: result.transactionId,
+        recipient: result.recipient,
+        amount: result.amount,
+        token: result.token,
+      },
+    });
+  } catch (err) {
+    logAuditEvent({
+      action: 'fee_withdrawal_attempt',
+      adminWallet,
+      queryParams: { recipient, error: err instanceof Error ? err.message : 'unknown_error' },
+      timestamp: new Date().toISOString(),
+      contractAction: 'withdraw_fees',
+    });
+
+    if (err instanceof FeeWithdrawalError && err.code === 'NO_FEES') {
+      res.status(409).json({ success: false, error: 'No fees available to withdraw' });
+      return;
+    }
     next(err);
   }
 }
