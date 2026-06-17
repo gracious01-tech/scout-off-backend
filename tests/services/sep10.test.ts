@@ -1,5 +1,7 @@
 import { buildChallenge, verifyAndIssueToken } from '../../src/services/sep10';
-import { Keypair, Transaction, Networks } from '@stellar/stellar-sdk';
+import crypto from 'crypto';
+import { Keypair, Transaction, Networks, TransactionBuilder, BASE_FEE, Operation, Account, Asset } from '@stellar/stellar-sdk';
+import config from '../../src/config';
 
 const clientKeypair = Keypair.random();
 
@@ -24,5 +26,157 @@ describe('sep10', () => {
   it('verifyAndIssueToken throws on unsigned challenge', () => {
     const xdr = buildChallenge(clientKeypair.publicKey());
     expect(() => verifyAndIssueToken(xdr)).toThrow('Invalid challenge signature');
+  });
+
+  // Challenge structure validation tests
+  describe('challenge structure validation', () => {
+    it('throws when challenge has no operations', () => {
+      const serverKeypair = Keypair.random();
+      const serverAccount = new Account(serverKeypair.publicKey(), '-1');
+      const tx = new TransactionBuilder(serverAccount, {
+        fee: BASE_FEE,
+        networkPassphrase: Networks.TESTNET,
+      })
+        .setTimeout(300)
+        .build();
+
+      tx.sign(serverKeypair);
+      tx.sign(clientKeypair);
+      const xdr = tx.toXDR();
+
+      expect(() => verifyAndIssueToken(xdr)).toThrow('Invalid challenge: no operations found');
+    });
+
+    it('throws when first operation is not manageData', () => {
+      const serverKeypair = Keypair.random();
+      const serverAccount = new Account(serverKeypair.publicKey(), '-1');
+      const tx = new TransactionBuilder(serverAccount, {
+        fee: BASE_FEE,
+        networkPassphrase: Networks.TESTNET,
+      })
+        .addOperation(
+          Operation.payment({
+            destination: serverKeypair.publicKey(),
+            amount: '1',
+            asset: new Asset('TESTCOIN', serverKeypair.publicKey()),
+            source: clientKeypair.publicKey(),
+          })
+        )
+        .setTimeout(300)
+        .build();
+
+      tx.sign(serverKeypair);
+      tx.sign(clientKeypair);
+      const xdr = tx.toXDR();
+
+      expect(() => verifyAndIssueToken(xdr)).toThrow('Invalid challenge: expected manageData operation');
+    });
+
+    it('throws when operation name does not match "scoutoff auth"', () => {
+      const serverKeypair = Keypair.random();
+      const serverAccount = new Account(serverKeypair.publicKey(), '-1');
+      const tx = new TransactionBuilder(serverAccount, {
+        fee: BASE_FEE,
+        networkPassphrase: Networks.TESTNET,
+      })
+        .addOperation(
+          Operation.manageData({
+            name: 'wrong name',
+            value: Buffer.from(Keypair.random().rawPublicKey()).toString('base64'),
+            source: clientKeypair.publicKey(),
+          })
+        )
+        .setTimeout(300)
+        .build();
+
+      tx.sign(serverKeypair);
+      tx.sign(clientKeypair);
+      const xdr = tx.toXDR();
+
+      expect(() => verifyAndIssueToken(xdr)).toThrow('Invalid challenge: wrong operation name');
+    });
+
+    it('throws when nonce value is missing', () => {
+      const serverKeypair = Keypair.random();
+      const serverAccount = new Account(serverKeypair.publicKey(), '-1');
+      const tx = new TransactionBuilder(serverAccount, {
+        fee: BASE_FEE,
+        networkPassphrase: Networks.TESTNET,
+      })
+        .addOperation(
+          Operation.manageData({
+            name: 'scoutoff auth',
+            value: null, // Explicitly no nonce
+            source: clientKeypair.publicKey(),
+          })
+        )
+        .setTimeout(300)
+        .build();
+
+      tx.sign(serverKeypair);
+      tx.sign(clientKeypair);
+      const xdr = tx.toXDR();
+
+      expect(() => verifyAndIssueToken(xdr)).toThrow('Invalid challenge: missing nonce value');
+    });
+
+    it('throws when nonce is not exactly 64 bytes (decoded)', () => {
+      const serverKeypair = Keypair.random();
+      const serverAccount = new Account(serverKeypair.publicKey(), '-1');
+      const tx = new TransactionBuilder(serverAccount, {
+        fee: BASE_FEE,
+        networkPassphrase: Networks.TESTNET,
+      })
+        .addOperation(
+          Operation.manageData({
+            name: 'scoutoff auth',
+            value: Buffer.from('too-short'), // 9 bytes instead of 64
+            source: clientKeypair.publicKey(),
+          })
+        )
+        .setTimeout(300)
+        .build();
+
+      tx.sign(serverKeypair);
+      tx.sign(clientKeypair);
+      const xdr = tx.toXDR();
+
+      expect(() => verifyAndIssueToken(xdr)).toThrow('Invalid challenge: nonce must be exactly 64 bytes');
+    });
+
+    it('throws when operation source is missing', () => {
+      const serverKeypair = Keypair.random();
+      const serverAccount = new Account(serverKeypair.publicKey(), '-1');
+      const tx = new TransactionBuilder(serverAccount, {
+        fee: BASE_FEE,
+        networkPassphrase: Networks.TESTNET,
+      })
+        .addOperation(
+          Operation.manageData({
+            name: 'scoutoff auth',
+            value: crypto.randomBytes(48).toString('base64'),
+            // No source specified - defaults to undefined
+          })
+        )
+        .setTimeout(300)
+        .build();
+
+      tx.sign(serverKeypair);
+      tx.sign(clientKeypair);
+      const xdr = tx.toXDR();
+
+      expect(() => verifyAndIssueToken(xdr)).toThrow('Missing source account in challenge');
+    });
+
+    it('accepts valid challenge with correct structure', () => {
+      const xdr = buildChallenge(clientKeypair.publicKey());
+      const tx = new Transaction(xdr, Networks.TESTNET);
+      tx.sign(clientKeypair);
+      const signedXdr = tx.toXDR();
+
+      const { token, account } = verifyAndIssueToken(signedXdr);
+      expect(typeof token).toBe('string');
+      expect(account).toBe(clientKeypair.publicKey());
+    });
   });
 });
