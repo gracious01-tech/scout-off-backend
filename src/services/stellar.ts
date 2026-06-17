@@ -89,6 +89,59 @@ export interface OnChainMilestone {
   ledger: number | null;
 }
 
+export interface FeeWithdrawalResult {
+  transactionId: string;
+  recipient: string;
+  amount: string; // u128 as string to avoid precision loss
+  token: string;
+}
+
+export type FeeWithdrawalErrorCode =
+  | 'NO_FEES'
+  | 'INVALID_RECIPIENT'
+  | 'NETWORK_ERROR'
+  | 'CONTRACT_PAUSED';
+
+/** Non-retryable codes — the caller should not retry without corrective action. */
+const NON_RETRYABLE_CODES: ReadonlySet<FeeWithdrawalErrorCode> = new Set([
+  'NO_FEES',
+  'INVALID_RECIPIENT',
+  'CONTRACT_PAUSED',
+]);
+
+export class FeeWithdrawalError extends Error {
+  /** Whether the operation may succeed if retried (e.g. transient network blip). */
+  public readonly retryable: boolean;
+
+  constructor(
+    message: string,
+    public readonly code: FeeWithdrawalErrorCode,
+  ) {
+    super(message);
+    this.name = 'FeeWithdrawalError';
+    this.retryable = !NON_RETRYABLE_CODES.has(code);
+  }
+}
+
+/**
+ * Stub: invoke the contract's `withdraw_fees(recipient: Address) -> u128` method.
+ * Returns the withdrawn amount and transaction metadata.
+ * Throws FeeWithdrawalError with code 'NO_FEES' when balance is zero.
+ */
+export async function withdrawFees(recipient: string): Promise<FeeWithdrawalResult> {
+  if (!recipient) {
+    throw new FeeWithdrawalError('Missing recipient', 'INVALID_RECIPIENT');
+  }
+  // TODO: build and submit withdraw_fees Soroban transaction
+  // Example (pseudocode):
+  //   const tx = await buildInvokeContractTx('withdraw_fees', [Address.fromString(recipient)]);
+  //   const result = await server.sendTransaction(tx);
+  //   const amount = parseU128FromXdr(result.returnValue);
+  //   if (amount === 0n) throw new FeeWithdrawalError('No fees available', 'NO_FEES');
+  //   return { transactionId: result.hash, recipient, amount: amount.toString(), token: 'XLM' };
+  throw new FeeWithdrawalError('No fees available to withdraw', 'NO_FEES');
+}
+
 /**
  * Stub: query verified milestones for a player from the Soroban contract.
  *

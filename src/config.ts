@@ -9,7 +9,23 @@ function required(name: string): string {
   return value;
 }
 
-const nodeEnv = process.env.NODE_ENV ?? 'development';
+type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+type NodeEnv = 'development' | 'test' | 'staging' | 'production';
+
+const VALID_ENVS: ReadonlySet<string> = new Set(['development', 'test', 'staging', 'production']);
+
+const rawNodeEnv = process.env.NODE_ENV ?? 'development';
+if (!VALID_ENVS.has(rawNodeEnv)) {
+  throw new Error(`Invalid NODE_ENV: "${rawNodeEnv}". Must be one of: ${[...VALID_ENVS].join(', ')}`);
+}
+const nodeEnv = rawNodeEnv as NodeEnv;
+
+const ENV_LOG_LEVEL: Record<NodeEnv, LogLevel> = {
+  development: 'debug',
+  test: 'warn',
+  staging: 'info',
+  production: 'warn',
+};
 
 const config = {
   nodeEnv,
@@ -51,9 +67,16 @@ const config = {
     // Maximum JSON payload size (default: 1MB)
     json: process.env.JSON_PAYLOAD_LIMIT ?? '1mb',
   },
+  logLevel: (process.env.LOG_LEVEL ?? ENV_LOG_LEVEL[nodeEnv]) as LogLevel,
+  showErrorDetails: nodeEnv === 'development' || nodeEnv === 'test',
+  useMockServices: nodeEnv === 'development' || nodeEnv === 'test',
 };
 
 export default config;
+
+export function isProduction(): boolean { return config.nodeEnv === 'production'; }
+export function isStaging(): boolean { return config.nodeEnv === 'staging'; }
+export function isDevelopment(): boolean { return config.nodeEnv === 'development'; }
 
 /** Route prefix constants for API versioning */
 export const API_PREFIX = process.env.API_PREFIX ?? '/api';
